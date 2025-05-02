@@ -1,0 +1,3 @@
+default:
+  data_path: './data/input.csv'
+  model_path: './models/'
