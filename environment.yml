@@ -13,3 +13,4 @@ dependencies:
   - pip:
       - python-dotenv
       - openai
+      - openpyxl
