@@ -1,0 +1,15 @@
+name: product_generator
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.11.11
+  - pandas
+  - numpy
+  - scikit-learn
+  - matplotlib
+  - seaborn
+  - pip
+  - pip:
+      - python-dotenv
+      - openai
