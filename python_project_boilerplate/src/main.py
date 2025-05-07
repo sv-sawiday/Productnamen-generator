@@ -33,22 +33,29 @@ def call_api(standard_dict, feature_dict):
     
     # de geoptimaliseerde prompt 
     PROMPT = f"""
+    Je bent een assistent voor een nederlands sanitairbedrijf en je spreekt alleen Nederlands. 
     Je bent gespecialiseerd in het generen van productnamen voor badkamer producten. 
-    De naam moet een duidelijke omschrijving geven van wat het product is en hoe het gebruikt kan worden, zonder het te technisch te maken.
-    Een voorbeeld van een goede naam is (Fortifura Calvi Regendoucheset - thermostatisch - 25cm hoofddouche - staafhanddouche - Geborsteld koper PVD (Koper)).
-    Hiervan moet jij zulke attributen uitkiezen thermostatisch - 25cm hoofddouche - staafhanddouche. De meest belangrijke eigenschappen dus!
+    De namen die je maakt zijn duidelijke omschrijvingen wat de unique selling point naar voren brengt op basis van de features. Leg vooral de focus op de producteigenschappen, laat algemene aspecten zoals service, prijs, eenheden, of niet unieke toepassingen achterwegen.
 
-    Kies de features uit de volgende dict, combineer de key en value in iets leesbaars: {feature_dict}. Gebruik GEEN afmetingen of arbitaire informatie!
-    Het is ook van belang dat er geen verdubbelingen inzitten zoals: 2 Grepen, 2 functies en Knop of greep bediening. Kies dan de beste van de opties.
-    De features die worden gekozen moeten wel volledig worden geschreven dus geen afkortingen.
-    Geef wel voorkeur aan kortere en minder features.
-    
-    Als er afmetingen zijn alleen afmeting_commercieel (1876) nemen indien geen afmeting laat streepje weg, hetzelfde voor materiaalgroep (1967).
-    Category1 moet als enkelvoudig product worden omschreven.
-    Kleur moet op het einde.
-    Deze worden genomen van {standard_dict}
-    
-    De output moet in de volgende format zijn: "brand - subbrand - catagory1 - afmeting_commercieel (1876) - feature_1 - feature_2 - etc. - materiaal - kleur (8)"
+    Goede voorbeelden zijn als volgt:
+        - Fortifura Calvi Regendoucheset - thermostatisch - 25cm hoofddouche - staafhanddouche - Geborsteld koper PVD (Koper)
+        - Go by Van Marcke spiegelkast - 58x49.5x14.5cm - 3 deuren - kunststof - wit
+        - Fortifura Calvi Fonteinkraan - 15.4cm - opbouw - 1gats - Geborsteld koper PVD (Koper)
+        - ZEZA Pure half vrijstaand bad - 170x80x58cm - acryl - mat wit
+        - Arcqua Havana Halfvrijstaand Bad - 170x80cm - links - mat groen
+        - Adema Vygo meubelwastafel - 121x2x46cm - overloop - 2 wasbakken - 2 kraangaten - keramiek - wit
+        - The Mosaic Factory Barcelona mozaïektegel - 30.9x30.9cm - wandtegel - vierkant - porselein - cream glans
+
+    De standaard opbouw van de product naam is als volgt:
+    "brand subbrand catagory1 - afmeting_commercieel (1) - feature_1 - feature_2 - etc. - materiaal - kleur (8)"
+
+    brand subbrand catagory1, afmeting_commercieel (1), materiaal, en kleur (8) moeten er altijd in waar mogelijk. 
+
+    De meeste features neem je uit de {standard_dict}, deze moeten er altijd inzitten. Wanneer er een mist laat je het streepje achterwegen. Ook moet voor category1 als een enkelvoudig product worden omschreven.
+
+    De andere features worden gekozen uit de {feature_dict}. Zorg dat de focus van de features pas bij het type product uit de {standard_dict}. Kies voor 0 tot 5 MAXIMAAL features afhankelijk wat het best het product omschrijft. Geef de voorkeur aan kortere pakkende namen. Focus op de unique selling points, schrijf deze volledig uit zodat geen informatie verloren gaat. Zoals bij vernoeming formaat douchekop 25cm + het feit dat het een hoofddouche is. Voorkom dubbele benoeming van aspecten zoals met verlichting, binnen en/of onder verlichting en LED of 2 Grepen, 2 functies en Knop of greep bediening, kies dan de beste van de opties. 
+
+    Geef als output steeds enkel de beste product naam in de aangegeven stijl. 
     """ 
 
     # creeeren van client met api key
@@ -58,20 +65,20 @@ def call_api(standard_dict, feature_dict):
     completion = client.chat.completions.create(
         model = "gpt-4.1-nano",  # test wat het optimale model is
         messages=[
-            {
-                "role": "system",
-                "content": """
-                Je bent een assistent voor een nederlands sanitairbedrijf en je spreekt alleen Nederlands. 
-                Aan de hand van verschillende attributen die je aangeleverd krijgt is het jou taak om de best beschrijvende attributen te kiezen voor ieder product.
-                Kies voor 0 tot 5 attributen afhankelijk wat het best het product omschrijft.
-                """ # verander het aantal attributen indien nodig
-            },
+            # {
+            #     "role": "system",
+            #     "content": """
+            #     Je bent een assistent voor een nederlands sanitairbedrijf en je spreekt alleen Nederlands. 
+            #     Aan de hand van verschillende attributen die je aangeleverd krijgt is het jou taak om de best beschrijvende attributen te kiezen voor ieder product.
+               
+            #     """ # verander het aantal attributen indien nodig
+            # },
             { 
-                "role": "user",
+                "role": "system",
                 "content": PROMPT
             }
         ],
-        temperature = 0.1, # lage temperatuur voor hoge focus in het model zonder te veel creativiteit. De namen moeten namelijk allemaal gelijkwaardige sturcturen krijgen.
+        temperature = 0.15, # lage temperatuur voor hoge focus in het model zonder te veel creativiteit. De namen moeten namelijk allemaal gelijkwaardige sturcturen krijgen.
         top_p = 0.1, # neemt alleen de top 10% van de probability distributie voor de volgende token 
         max_completion_tokens = 2000 # gebaseerd op de intuitie dat deze taak niet te veel tokens nodig zal hebben
         )
@@ -125,7 +132,7 @@ def get_features(row_data:pd.DataFrame):
     feature_dict = {}
 
     # de standaard kolommen die in iedere naam zouden moeten zitten
-    standard_columns = ["brand", "subbrand", "category1", "kleur (8)", "afmeting_commercieel (1876)", "materiaalgroep (1967)"]
+    standard_columns = ["brand", "subbrand", "category1", "kleur (8)", "afmeting (1)", "materiaalgroep (1967)"]
 
     for col in standard_columns:
         if col in row_data:
@@ -159,7 +166,7 @@ def create_names(df:pd.DataFrame):
     
     name_series = pd.Series()
 
-    for index in range(len(df[:10])):
+    for index in range(len(df)):
         # ophalen van de rij
         row_data = df.iloc[[index]]
 
@@ -169,15 +176,20 @@ def create_names(df:pd.DataFrame):
 
         # geef beide is lijsten aan de api om de beste feature te extracten
         output = call_api(standard_dict, feature_dict)
-        print(output)
 
         # voeg de nieuwe naam toe aan lijst met alle nieuwe namen
         output_series = pd.Series([output])
         name_series = pd.concat([name_series, output_series], ignore_index=True)
-        print(name_series)
+        print(standard_dict)
+        print(output)
+
+    return name_series
 
 if __name__ == "__main__":
     df = load_data()
-    create_names(df)
+    series = create_names(df)
+
+    for name in series:
+        print(name)
 
     # export moet nog toegevoegd worden
