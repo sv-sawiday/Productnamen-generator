@@ -18,7 +18,7 @@ pd.set_option('mode.chained_assignment', None)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-def call_api(context_dict, feature_dict):
+def call_api(standard_dict, feature_dict):
     """
     Haalt de data van de externe API om de juiste features voor een product te kiezen. 
 
@@ -46,7 +46,7 @@ def call_api(context_dict, feature_dict):
     Als er afmetingen zijn alleen afmeting_commercieel (1876) nemen indien geen afmeting laat streepje weg, hetzelfde voor materiaalgroep (1967).
     Category1 moet als enkelvoudig product worden omschreven.
     Kleur moet op het einde.
-    Deze worden genomen van {context_dict}
+    Deze worden genomen van {standard_dict}
     
     De output moet in de volgende format zijn: "brand - subbrand - catagory1 - afmeting_commercieel (1876) - feature_1 - feature_2 - etc. - materiaal - kleur (8)"
     """ 
@@ -105,12 +105,23 @@ def load_data(): # hier moeten de paden nog van aan worden gepast in lijn met wa
 
 
 def get_features(row_data:pd.DataFrame):
+    """
+    Voor iedere rij met data worden de bruikbare features gefilterd en omgezet naar een dict
+
+    Args:
+        row_data (pd.DataFrame row with header): de data waarin de product informatie staat met daarbij de header om aan te duiden waar het over gaat.
+
+    Returns:
+        standard_dict (dict): de standaard informatie die in iedere naam moet zitten indien beschikbaar
+        feature_dict (dict): de features die kunnen worden gekozen als aanvullende informatie voor de naam  
+    """
+
     # verwijderen van de kolommen waar geen waardevolle data instaat
     row_data = row_data.dropna(axis=1)
     row_data = row_data.loc[:, (row_data != 0).any(axis=0)]
 
-    # opsplitsen in context- en feature-dictionaries
-    context_dict = {}
+    # opsplitsen in standard- en feature-dictionaries
+    standard_dict = {}
     feature_dict = {}
 
     # de standaard kolommen die in iedere naam zouden moeten zitten
@@ -118,7 +129,7 @@ def get_features(row_data:pd.DataFrame):
 
     for col in standard_columns:
         if col in row_data:
-            context_dict[col] = row_data.iloc[0][col]
+            standard_dict[col] = row_data.iloc[0][col]
 
     # de andere kolommen zijn onderdeel van mogelijke features met enige uitzonderingen 
     feature_exceptions = ["brand", "subbrand", "category1", "kleur (8)", "afmeting_commercieel (1876)",
@@ -132,22 +143,32 @@ def get_features(row_data:pd.DataFrame):
         if col not in feature_exceptions:
             feature_dict[col] = row_data.iloc[0][col]
 
-    return context_dict, feature_dict
+    return standard_dict, feature_dict
 
 
 def create_names(df:pd.DataFrame):
+    """
+    selecteerd de features in de standaard naam conventie en zet deze in een standaard output
+
+    Args:
+        df (pd.DataFrame): import excelsheet met de productinformatie
+
+    Returns:
+        df (pd.Series): een lijst met alle juist geformatte namen met de best geselecteerde features 
+    """
+    
     name_series = pd.Series()
 
     for index in range(len(df[:10])):
-        # ophalen van de rij (behoud kolommen vanaf index 3)
-        row_data = df.iloc[[index], 3:]
+        # ophalen van de rij
+        row_data = df.iloc[[index]]
 
         # extraheren van de features
-        context_dict, feature_dict = get_features(row_data)
-        logging.info(f"Feature dict len: {len(feature_dict)} and context dict len: {len(context_dict)} are created") 
+        standard_dict, feature_dict = get_features(row_data)
+        logging.info(f"Feature dict len: {len(feature_dict)} and standard dict len: {len(standard_dict)} are created") 
 
         # geef beide is lijsten aan de api om de beste feature te extracten
-        output = call_api(context_dict, feature_dict)
+        output = call_api(standard_dict, feature_dict)
         print(output)
 
         # voeg de nieuwe naam toe aan lijst met alle nieuwe namen
@@ -158,3 +179,5 @@ def create_names(df:pd.DataFrame):
 if __name__ == "__main__":
     df = load_data()
     create_names(df)
+
+    # export moet nog toegevoegd worden
